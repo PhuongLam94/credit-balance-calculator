@@ -1,6 +1,8 @@
 package com.example.creditcardbalancecalculator
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +17,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
+import java.security.Permission
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,7 +36,19 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+        askForPermission(Manifest.permission.READ_SMS)
 
+    }
 
+    private fun askForPermission(vararg permissions:String) {
+        var deniedPermissions = ArrayList<String>()
+        for (permission in permissions)
+            if (ContextCompat.checkSelfPermission(this, permission    )
+                != PackageManager.PERMISSION_GRANTED) {
+                deniedPermissions.add(permission)
+            }
+        val array = arrayOfNulls<String>(deniedPermissions.size)
+        deniedPermissions.toArray(array)
+        requestPermissions(array, 1)
     }
 }
