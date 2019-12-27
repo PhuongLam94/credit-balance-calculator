@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Credit card balance calculator</string>
+    <string name="title_balance">Balance</string>
+    <string name="title_monthly_transaction">Monthly transaction</string>
+    <string name="to_date">To date</string>
+    <string name="from_date">From date</string>
+    <string name="calculate">Calculate</string>
+    <string name="date">Date</string>
+    <string name="time">Time</string>
+    <string name="description">Description</string>
+    <string name="amount">Amount</string>
+</resources>
