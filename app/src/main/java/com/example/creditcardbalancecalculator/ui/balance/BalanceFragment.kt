@@ -155,11 +155,18 @@ class BalanceFragment : Fragment() {
 
     private val textInputAfterChangeListener = {
 
-        calculateBtn.isEnabled = checkCalculateBtnShouldBeEnabled()
-        if (calculateBtn.isEnabled) {
+        var fromAndToDateAreBothValid = fromAndToDateAreBothValid()
+        if (fromAndToDateAreBothValid) {
             setFromAndToDate()
+            if (fromDate.isEqual(toDate) || fromDate.isBefore(toDate)) {
+                calculateBtn.isEnabled = true
+                jumpToNextInput()
+            } else {
+                calculateBtn.isEnabled = false
+                val toast = Toast.makeText(context, "From date must be before or equal to To date!", Toast.LENGTH_SHORT)
+                toast.show()
+            }
         }
-        jumpToNextInput()
     }
 
     private fun jumpToNextInput() {
@@ -173,7 +180,7 @@ class BalanceFragment : Fragment() {
         toDate = getDateFromInput(toDateInputView)
     }
 
-    private fun checkCalculateBtnShouldBeEnabled() =
+    private fun fromAndToDateAreBothValid() =
         isValidDateInput(fromDateInputView) && isValidDateInput(toDateInputView)
 
     private fun getDateFromInput(inputView: TextInputEditText): LocalDate {
