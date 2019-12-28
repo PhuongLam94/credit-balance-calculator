@@ -4,15 +4,20 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import com.example.creditcardbalancecalculator.data.Transaction
+import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
+import com.example.creditcardbalancecalculator.data.TransactionList
+import com.example.creditcardbalancecalculator.data.db.entity.MonthlyTransaction
 import com.example.creditcardbalancecalculator.helper.CursorHelper
+import com.example.creditcardbalancecalculator.helper.DateHelper
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
+import kotlin.collections.ArrayList
 
-class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: LocalDate) {
+class TransactionProcessor(val context: Context?, val fromDate: LocalDate, val toDate: LocalDate) {
     companion object {
         private val CREDIT_SPENT_MESSAGE_REGEX_1 =
             Regex("(\\d{2}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}) the VS Gold 4697 giao dich ([\\d,]+)VND tai (.*)So du kha dung: .*\\.LH \\+842835266060")
@@ -35,8 +40,9 @@ class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: Local
             .parseDefaulting(ChronoField.HOUR_OF_DAY, 12)
             .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
             .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0).toFormatter()
-        private val MSG_PARSE_EXCEPTION = {body:String -> Exception("This is not a credit card body message: $body") }
-        private val LONG_NOT_INITIALIZED = -1L
+        private val MSG_PARSE_EXCEPTION =
+            { body: String -> Exception("This is not a credit card body message: $body") }
+
         class Message(
             val content: String,
             val matchResult: MatchResult,
@@ -44,73 +50,34 @@ class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: Local
             val dateTimeEpoch: Long
         ) {
         }
+
+
     }
-
-    val context = context
-    val fromDate = fromDate
-    val toDate = toDate
-
     lateinit var transactions: List<Transaction>
     lateinit var cursor: Cursor
 
-    var inAmount = LONG_NOT_INITIALIZED
-    var outAmount = LONG_NOT_INITIALIZED
 
     var messages = ArrayList<Message>()
 
-    fun calculateTotalToPayAmount(): Long {
-        calculateInAmount()
-        calculateOutAmount()
-        return outAmount - inAmount
-    }
-
-    fun calculateInAmount(): Long {
-        if (inAmount == LONG_NOT_INITIALIZED && this::transactions.isInitialized) {
-
-            inAmount = 0L
-            for (transaction in transactions) {
-                if (transaction.amount < 0)
-                    inAmount += (-transaction.amount)
-            }
-        }
-        return inAmount
-    }
-
-    fun calculateOutAmount(): Long {
-        if (outAmount == LONG_NOT_INITIALIZED && this::transactions.isInitialized) {
-
-            outAmount = 0L
-            for (transaction in transactions) {
-                if (transaction.amount > 0)
-                    outAmount += transaction.amount
-            }
-        }
-        return outAmount
-    }
-
-    fun readMessageFromBank(): List<Transaction> {
-        var transactions: List<Transaction> = listOf()
+    fun readMessageFromBank(): TransactionList {
+        var transactions: ArrayList<Transaction> = ArrayList()
         cursor = context!!.contentResolver.query(
-            Uri.parse("content://sms/inbox"),null,null,null,null
-        ) ?: return transactions
+            Uri.parse("content://sms/inbox"), null, null, null, null
+        ) ?: return TransactionList(transactions)
         if (cursor.moveToFirst()) {
             do {
                 var message = getMessageInstance()
                 if (message != null && isTransactionInTime(message)) {
                     var transaction = getTransactionFromMsg(message)
-                    transactions += transaction
+                    transactions.add(transaction)
                 }
             } while (cursor.moveToNext())
 
         }
         this.transactions = transactions
-        return transactions
+        return TransactionList(transactions)
     }
 
-
-    fun getTotalToPay(): Long {
-        return outAmount - inAmount
-    }
 
 
     private fun getMessageInstance(): Message? {
@@ -118,7 +85,7 @@ class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: Local
         if (address == "Sacombank") {
             var body = CursorHelper.getBody(cursor)
             var message = getMessageInstanceOfBody(body)
-            if (message != null){
+            if (message != null) {
                 messages.add(message)
                 return message
             }
@@ -128,12 +95,22 @@ class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: Local
 
     private fun getMessageInstanceOfBody(body: String): Message? {
         var isSpentMsg = true
-        var matchResult = getMatchResultFromAny(body, CREDIT_SPENT_MESSAGE_REGEX_1, CREDIT_SPENT_MESSAGE_REGEX_2)
+        var matchResult =
+            getMatchResultFromAny(body, CREDIT_SPENT_MESSAGE_REGEX_1, CREDIT_SPENT_MESSAGE_REGEX_2)
         if (matchResult == null) {
-            matchResult = getMatchResultFromAny(body, CREDIT_REFUND_MESSAGE_REGEX_1, CREDIT_REFUND_MESSAGE_REGEX_2)?:return null
+            matchResult = getMatchResultFromAny(
+                body,
+                CREDIT_REFUND_MESSAGE_REGEX_1,
+                CREDIT_REFUND_MESSAGE_REGEX_2
+            ) ?: return null
             isSpentMsg = false
         }
-        return Message(body, matchResult, isSpentMsg,CursorHelper.getStringFromColumnName(CursorHelper.DATE_HEADER, cursor).toLong())
+        return Message(
+            body,
+            matchResult,
+            isSpentMsg,
+            CursorHelper.getStringFromColumnName(CursorHelper.DATE_HEADER, cursor).toLong()
+        )
     }
 
     private fun getTransactionFromMsg(message: Message): Transaction {
@@ -152,28 +129,57 @@ class TransactionProcessor(context: Context?, fromDate: LocalDate, toDate: Local
         if (!message.spentMsg) amount = -amount
         return Transaction(dateTime, description, amount)
     }
-    private fun getMatchResultFromAny(string: String,vararg regexes:Regex):MatchResult? {
-        var matchResult:MatchResult? = null
-        for (regex in regexes){
+
+    private fun getMatchResultFromAny(string: String, vararg regexes: Regex): MatchResult? {
+        var matchResult: MatchResult? = null
+        for (regex in regexes) {
             matchResult = regex.matchEntire(string)
             if (matchResult != null)
                 break
         }
         return matchResult
     }
+
     private fun getDataFromMsg(matchResult: MatchResult, idx: Int): String {
-        return matchResult.groups[idx]?.value ?: throw MSG_PARSE_EXCEPTION(matchResult.groups[0]!!.value)
+        return matchResult.groups[idx]?.value
+            ?: throw MSG_PARSE_EXCEPTION(matchResult.groups[0]!!.value)
     }
 
     private fun isTransactionInTime(message: Message): Boolean {
         var fromDateTime = fromDate.atStartOfDay()
-        var toDateTime = toDate.atTime(23, 59, 59)
-        var messageDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(message.dateTimeEpoch), ZoneId.systemDefault())
-        return (messageDateTime.isEqual(fromDateTime) || messageDateTime.isAfter(
-            fromDateTime
-        ))
-                && (messageDateTime.isBefore(toDateTime) || messageDateTime.isEqual(
-            toDateTime
-        ))
+        var toDateTime = DateHelper.getEndOfDate(toDate)
+        var messageDateTime = LocalDateTime.ofInstant(
+            Instant.ofEpochMilli(message.dateTimeEpoch),
+            ZoneId.systemDefault()
+        )
+        return DateHelper.dateTimeIsBetween(messageDateTime, fromDateTime, toDateTime)
+    }
+
+    fun transformMonthlyTransactionList(monthlyTransactions: List<MonthlyTransaction>): List<Transaction> {
+        var transactions: ArrayList<Transaction> = ArrayList()
+        for (monthlyTransaction in monthlyTransactions) {
+            var transactionDate = getPossibleTransactionDate(monthlyTransaction)
+            if (transactionDate != null) {
+                transactions.add(transformMonthlyTransaction(monthlyTransaction, transactionDate))
+            }
+        }
+        return transactions
+    }
+
+    private fun transformMonthlyTransaction(monthlyTransaction: MonthlyTransaction, transactionDate: LocalDateTime): Transaction {
+        return Transaction(transactionDate, monthlyTransaction.description, monthlyTransaction.amount)
+    }
+
+    private fun getPossibleTransactionDate(monthlyTransaction: MonthlyTransaction): LocalDateTime? {
+        if (monthlyTransaction.date == null)
+            throw Exception("Monthly transaction ${monthlyTransaction.description} date is null")
+
+        var transactionDate1 = LocalDate.of(fromDate.year, fromDate.month, monthlyTransaction.date)
+        var transactionDate2 = LocalDate.of(toDate.year, toDate.month, monthlyTransaction.date)
+        return if (DateHelper.dateIsBetween(transactionDate1, fromDate, toDate))
+            DateHelper.getMiddleOfDate(transactionDate1)
+        else if (DateHelper.dateIsBetween(transactionDate2, fromDate, toDate))
+            DateHelper.getMiddleOfDate(transactionDate2)
+        else null
     }
 }

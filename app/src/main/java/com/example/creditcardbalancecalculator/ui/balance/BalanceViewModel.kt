@@ -1,13 +1,19 @@
 package com.example.creditcardbalancecalculator.ui.balance
 
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
+import com.example.creditcardbalancecalculator.data.TransactionList
 
 class BalanceViewModel : ViewModel() {
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is balance Fragment"
+    val monthlyTransactions : MutableLiveData<MonthlyTransactionList> by lazy {
+        MutableLiveData<MonthlyTransactionList>()
     }
-    val text: LiveData<String> = _text
+    val transactionList : MutableLiveData<TransactionList> by lazy {
+        MutableLiveData<TransactionList>()
+    }
+    val transactionHasMonthly : MutableLiveData<Boolean> by lazy {
+        MutableLiveData<Boolean>()
+    }
 }

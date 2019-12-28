@@ -9,15 +9,17 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
-import com.example.creditcardbalancecalculator.data.Transaction
 import com.google.android.material.textfield.TextInputEditText
 import java.time.LocalDate
 import android.widget.*
-import androidx.core.view.children
+import androidx.lifecycle.Observer
 import com.example.creditcardbalancecalculator.R
 import com.example.creditcardbalancecalculator.data.Constant.Companion.DATE_ONLY_FORMATTER
+import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
+import com.example.creditcardbalancecalculator.data.TransactionList
 import com.example.creditcardbalancecalculator.helper.DateHelper
 import com.example.creditcardbalancecalculator.processor.TransactionProcessor
+import com.example.creditcardbalancecalculator.task.GetMonthlyTransactionTasks
 import kotlinx.android.synthetic.main.fragment_balance.*
 
 
@@ -30,7 +32,8 @@ class BalanceFragment : Fragment() {
     private var currentFocusInput: TextInputEditText? = null
     private lateinit var calculateBtn: Button
     private lateinit var transactionTable:TableLayout
-
+    private lateinit var transactionProcessor:TransactionProcessor
+    private lateinit var transactionToTableRowPopulator:TransactionToTableRowPopulator
     private lateinit var cursor: Cursor
     companion object {
         private val INPUT_FIELD_DATE_FORMATTER = DATE_ONLY_FORMATTER
@@ -44,6 +47,7 @@ class BalanceFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         setViewModel()
+        setObserverForLiveData()
         val root = createRoot(inflater, container)
         setViews(root)
         handleTextInputs()
@@ -53,6 +57,42 @@ class BalanceFragment : Fragment() {
         return root
     }
 
+    private fun setObserverForLiveData() {
+        // Create the observer which updates the UI.
+        val monthlyTransactionObserver = Observer<MonthlyTransactionList> { monthlyTransactionList ->
+            var transactionListFromMonthlyTransaction = transactionProcessor.transformMonthlyTransactionList(monthlyTransactionList.monthlyTransactions)
+            balanceViewModel.transactionList.value?.addTransactions(transactionListFromMonthlyTransaction)
+            balanceViewModel.transactionHasMonthly.value = true
+        }
+        balanceViewModel.monthlyTransactions.observe(this, monthlyTransactionObserver)
+
+        val transactionObserver = Observer<TransactionList> { transactionList ->
+            if (balanceViewModel.transactionHasMonthly.value!!) {
+                populateTransactionList(transactionList)
+            } else {
+                balanceViewModel.monthlyTransactions.value = GetMonthlyTransactionTasks(context!!.applicationContext).execute().get()
+            }
+        }
+        balanceViewModel.transactionList.observe(this, transactionObserver)
+
+        val transactionHasMonthlyObserver = Observer<Boolean> { transactionHasMonthly ->
+            if (transactionHasMonthly){
+                populateTransactionList(balanceViewModel.transactionList.value!!)
+            }
+        }
+        balanceViewModel.transactionHasMonthly.observe(this, transactionHasMonthlyObserver)
+    }
+
+    private fun populateTransactionList(transactionList: TransactionList) {
+        transactionList.calculateAmounts()
+        clearTransactionTable()
+        if (!this::transactionToTableRowPopulator.isInitialized)
+            transactionToTableRowPopulator =
+                TransactionToTableRowPopulator(context, transactionTable, transactionList)
+
+        transactionToTableRowPopulator.transactionList = transactionList
+        transactionToTableRowPopulator.populateDataToTransactionTable()
+    }
 
 
     private fun setViewModel() {
@@ -114,13 +154,27 @@ class BalanceFragment : Fragment() {
 
 
     private val textInputAfterChangeListener = {
-        calculateBtn.isEnabled =
-            isValidDateInput(fromDateInputView) && isValidDateInput(toDateInputView)
+
+        calculateBtn.isEnabled = checkCalculateBtnShouldBeEnabled()
         if (calculateBtn.isEnabled) {
-            fromDate = getDateFromInput(fromDateInputView)
-            toDate = getDateFromInput(toDateInputView)
+            setFromAndToDate()
+        }
+        jumpToNextInput()
+    }
+
+    private fun jumpToNextInput() {
+        if (currentFocusInput != null && currentFocusInput!!.equals(fromDateInputView)){
+            toDateInputView.requestFocus()
         }
     }
+
+    private fun setFromAndToDate() {
+        fromDate = getDateFromInput(fromDateInputView)
+        toDate = getDateFromInput(toDateInputView)
+    }
+
+    private fun checkCalculateBtnShouldBeEnabled() =
+        isValidDateInput(fromDateInputView) && isValidDateInput(toDateInputView)
 
     private fun getDateFromInput(inputView: TextInputEditText): LocalDate {
         var text = inputView.text
@@ -155,13 +209,9 @@ class BalanceFragment : Fragment() {
     private fun handleCalculateBtn() {
         calculateBtn.setOnClickListener {
             currentFocusInput?.clearFocus()
-            clearTransactionTable()
-            var transactionProcessor = TransactionProcessor(context, fromDate, toDate)
-            transactionProcessor.readMessageFromBank()
-
-            var transactionToTableRowPopulator = TransactionToTableRowPopulator(context, transactionTable, transactionProcessor)
-            transactionToTableRowPopulator.populateDataToTransactionTable()
-
+            balanceViewModel.transactionHasMonthly.value = false
+            transactionProcessor = TransactionProcessor(context, fromDate, toDate)
+            balanceViewModel.transactionList.value = transactionProcessor.readMessageFromBank()
         }
     }
 

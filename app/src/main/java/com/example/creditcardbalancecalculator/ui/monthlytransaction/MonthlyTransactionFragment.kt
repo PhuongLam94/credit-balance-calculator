@@ -22,10 +22,7 @@ class MonthlyTransactionFragment : Fragment() {
         monthlyTransactionViewModel =
             ViewModelProviders.of(this).get(MonthlyTransactionViewModel::class.java)
         val root = inflater.inflate(R.layout.fragment_monthly_transaction, container, false)
-        val textView: TextView = root.findViewById(R.id.text_monthly_transaction)
-        monthlyTransactionViewModel.text.observe(this, Observer {
-            textView.text = it
-        })
+
         return root
     }
 }

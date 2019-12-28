@@ -1,4 +1,4 @@
-package com.example.creditcardbalancecalculator.ui.balance
+package com.example.creditcardbalancecalculator.ui.monthlytransaction
 
 import android.content.Context
 import android.graphics.Color
@@ -8,40 +8,34 @@ import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
 import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
-import com.example.creditcardbalancecalculator.data.TransactionList
 import java.time.format.DateTimeFormatter
 
 
-class TransactionToTableRowPopulator(
-    context: Context?,
-    transactionTable: TableLayout,
-    transactions: TransactionList
+class MonthlyTransactionToTableRowPopulator(
+    val context: Context?,
+    val monthlyTransactionTable: TableLayout,
+    val monthlyTransactionList: MonthlyTransactionList
 ) {
-    val transactionTable = transactionTable
-    var transactionList = transactions
-    val context = context
 
 
     companion object {
         private val TIME_ONLY_FORMATTER = DateTimeFormatter.ofPattern("hh:mm")
-        private val MONTH_DAT_ONLY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd")
+        private val MONTH_DATE_ONLY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd")
     }
 
-    fun populateDataToTransactionTable() {
-        transactionTable.visibility = View.VISIBLE
-        populateTransactionRows()
-        populateAmountRows()
+    fun populateDataToMonthlyTransactionTable() {
+        monthlyTransactionTable.visibility = View.VISIBLE
+        populateMonthlyTransactionRows()
     }
 
-    private fun populateTransactionRows() {
-        transactionList.transactions.sortByDescending { it.dateTime }
-        for (transaction in transactionList.transactions) {
+    private fun populateMonthlyTransactionRows() {
+        monthlyTransactionList.monthlyTransactions.sortByDescending { it.date }
+        for (monthlyTransaction in monthlyTransactionList.monthlyTransactions) {
             var row = getTableRow()
-            addTextViewToTableRow(row, transaction.dateTime.format(MONTH_DAT_ONLY_FORMATTER))
-            addTextViewToTableRow(row, transaction.dateTime.format(TIME_ONLY_FORMATTER))
-            addTextViewToTableRow(row, transaction.description)
-            addTextViewToTableRow(row, toVNDFormat(transaction.amount))
-            transactionTable.addView(row)
+            addTextViewToTableRow(row, monthlyTransaction.date.toString())
+            addTextViewToTableRow(row, monthlyTransaction.description)
+            addTextViewToTableRow(row, toVNDFormat(monthlyTransaction.amount))
+            monthlyTransactionTable.addView(row)
         }
     }
 
@@ -57,21 +51,6 @@ class TransactionToTableRowPopulator(
         textView.layoutParams = layoutParams
         textView.setTextColor(Color.BLACK)
         row.addView(textView)
-    }
-
-    private fun populateAmountRows() {
-        populateAmountRow("In", transactionList.inAmount)
-        populateAmountRow("Out", transactionList.outAmount)
-        populateAmountRow("Total to pay", transactionList.totalToPayAmount)
-    }
-
-    private fun populateAmountRow(title: String, amount: Long) {
-        var row = getTableRow()
-        var titleLayoutParams = getTableCellLayoutParams(2)
-        var amountLayoutParams = getTableCellLayoutParams(2)
-        addTextViewToTableRow(row, title, titleLayoutParams)
-        addTextViewToTableRow(row, toVNDFormat(amount), amountLayoutParams)
-        transactionTable.addView(row)
     }
 
     private fun getTableRow(): TableRow {

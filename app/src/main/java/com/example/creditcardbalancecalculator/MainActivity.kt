@@ -47,8 +47,10 @@ class MainActivity : AppCompatActivity() {
                 != PackageManager.PERMISSION_GRANTED) {
                 deniedPermissions.add(permission)
             }
-        val array = arrayOfNulls<String>(deniedPermissions.size)
-        deniedPermissions.toArray(array)
-        requestPermissions(array, 1)
+        if (!deniedPermissions.isEmpty()) {
+            val array = arrayOfNulls<String>(deniedPermissions.size)
+            deniedPermissions.toArray(array)
+            requestPermissions(array, 1)
+        }
     }
 }
