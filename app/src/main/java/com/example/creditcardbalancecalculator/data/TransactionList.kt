@@ -42,4 +42,10 @@ class TransactionList(val transactions: ArrayList<Transaction>){
         return outAmount
     }
 
+    fun addMonthlyTransactions(monthlyTransaction: List<Transaction>) {
+        for (transaction in monthlyTransaction)
+            transaction.isMonthlyTransaction = true
+        addTransactions(monthlyTransaction)
+    }
+
 }

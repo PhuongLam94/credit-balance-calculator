@@ -42,7 +42,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_column="2"
+                    android:layout_column="1"
                     android:layout_marginStart="@dimen/table_cell_horizontal_margin"
                     android:text="@string/description"
                     android:textColor="@color/black" />
@@ -50,7 +50,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_column="3"
+                    android:layout_column="2"
                     android:layout_marginStart="@dimen/table_cell_horizontal_margin"
                     android:text="@string/amount"
                     android:textColor="@color/black" />

@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter
 class MonthlyTransactionToTableRowPopulator(
     val context: Context?,
     val monthlyTransactionTable: TableLayout,
-    val monthlyTransactionList: MonthlyTransactionList
+    var monthlyTransactionList: MonthlyTransactionList
 ) {
 
 

@@ -41,6 +41,9 @@ class TransactionToTableRowPopulator(
             addTextViewToTableRow(row, transaction.dateTime.format(TIME_ONLY_FORMATTER))
             addTextViewToTableRow(row, transaction.description)
             addTextViewToTableRow(row, toVNDFormat(transaction.amount))
+
+            if (transaction.isMonthlyTransaction)
+                row.setBackgroundColor(Color.parseColor("#eef2d5"))
             transactionTable.addView(row)
         }
     }

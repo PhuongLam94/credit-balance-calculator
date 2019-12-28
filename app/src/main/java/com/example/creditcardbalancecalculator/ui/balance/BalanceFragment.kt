@@ -61,7 +61,7 @@ class BalanceFragment : Fragment() {
         // Create the observer which updates the UI.
         val monthlyTransactionObserver = Observer<MonthlyTransactionList> { monthlyTransactionList ->
             var transactionListFromMonthlyTransaction = transactionProcessor.transformMonthlyTransactionList(monthlyTransactionList.monthlyTransactions)
-            balanceViewModel.transactionList.value?.addTransactions(transactionListFromMonthlyTransaction)
+            balanceViewModel.transactionList.value?.addMonthlyTransactions(transactionListFromMonthlyTransaction)
             balanceViewModel.transactionHasMonthly.value = true
         }
         balanceViewModel.monthlyTransactions.observe(this, monthlyTransactionObserver)
