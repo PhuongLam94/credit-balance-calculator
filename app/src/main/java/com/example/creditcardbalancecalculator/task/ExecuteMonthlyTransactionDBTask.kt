@@ -8,12 +8,12 @@ import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
 import com.example.creditcardbalancecalculator.data.db.AppDatabase
 import com.example.creditcardbalancecalculator.data.db.dao.MonthlyTransactionDAO
 
-class GetMonthlyTransactionTasks(val context: Context):AsyncTask<Void, MonthlyTransactionList, MonthlyTransactionList>(){
-    override fun doInBackground(vararg params: Void?): MonthlyTransactionList {
+class ExecuteMonthlyTransactionDBTask<T>(val context: Context):AsyncTask<(MonthlyTransactionDAO) -> T, T, T>(){
+    override fun doInBackground(vararg params: (MonthlyTransactionDAO) -> T): T {
         val monthlyTransactionDAO = AppDatabase.getDatabase(context).monthlyTransactionDAO()
         if (monthlyTransactionDAO.getAll().isEmpty())
             Dataloader.initMonthlyTransaction()
-        return MonthlyTransactionList(ArrayList(monthlyTransactionDAO.getAll()))
+        return params[0](monthlyTransactionDAO)
     }
 
 }

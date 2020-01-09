@@ -4,20 +4,67 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TableLayout
+import android.widget.Toast
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.example.creditcardbalancecalculator.R
 import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
-import com.example.creditcardbalancecalculator.task.GetMonthlyTransactionTasks
-import com.example.creditcardbalancecalculator.ui.balance.TransactionToTableRowPopulator
+import com.example.creditcardbalancecalculator.data.db.entity.MonthlyTransaction
+import com.example.creditcardbalancecalculator.helper.MonthlyTransactionHelper
+import com.example.creditcardbalancecalculator.helper.MonthlyTransactionHelper.Companion.validateMonthlyTransactionFields
+import com.example.creditcardbalancecalculator.task.ExecuteMonthlyTransactionDBTask
+import com.example.creditcardbalancecalculator.ui.dialog.CreateMonthlyTransactionDialog
 
-class MonthlyTransactionFragment : Fragment() {
+class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.NoticeDialogListener {
+    override fun onDialogPositiveClick(
+        dialog: DialogFragment,
+        description: String,
+        amount: String,
+        date: String
+    ) {
+        val message = validateMonthlyTransactionFields(description, amount, date)
+        if (message.isEmpty()) {
+            createMonthlyTransaction(description, amount.toLong(), date.toInt())
+            val toast =
+                Toast.makeText(
+                    context,
+                    "Monthly transaction created successfully!",
+                    Toast.LENGTH_SHORT
+                )
+            toast.show()
+            dialog.dismiss()
+            getMonthlyTransactions()
+        } else {
+            val toast =
+                Toast.makeText(
+                    context,
+                    message,
+                    Toast.LENGTH_LONG
+                )
+            toast.show()
+        }
+    }
+
+
+    private fun createMonthlyTransaction(
+        description: String, amount: Long, date: Int
+    ) {
+        var monthlyTransaction = MonthlyTransaction(date, description, amount)
+        var addMonthlyTransactionFun = MonthlyTransactionHelper.saveTransaction(monthlyTransaction)
+        ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
+            addMonthlyTransactionFun
+        ).get()
+    }
 
     private lateinit var monthlyTransactionViewModel: MonthlyTransactionViewModel
     private lateinit var transactionTable: TableLayout
     private lateinit var transactionToTableRowPopulator: MonthlyTransactionToTableRowPopulator
+    private lateinit var createBtn: Button
+    private lateinit var root: View
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -25,14 +72,26 @@ class MonthlyTransactionFragment : Fragment() {
     ): View? {
         setViewModel()
         setObserverForLiveData()
-        val root = createRoot(inflater, container)
-        setViews(root)
+        setRoot(inflater, container)
+        setViews()
         getMonthlyTransactions()
+        handleCreateBtn()
         return root
     }
 
+    private fun handleCreateBtn() {
+        createBtn.setOnClickListener { _ ->
+            var createDialog = CreateMonthlyTransactionDialog()
+            createDialog.setTargetFragment(this, 0)
+            createDialog.show(fragmentManager, "createMonthlyTransactionDialog")
+        }
+    }
+
     private fun getMonthlyTransactions() {
-        monthlyTransactionViewModel.monthlyTransactionList.value = GetMonthlyTransactionTasks(context!!.applicationContext).execute().get()
+        monthlyTransactionViewModel.monthlyTransactionList.value =
+            ExecuteMonthlyTransactionDBTask<MonthlyTransactionList>(context!!.applicationContext).execute(
+                MonthlyTransactionHelper.getAllTransaction
+            ).get()
     }
 
     private fun setViewModel() {
@@ -42,9 +101,10 @@ class MonthlyTransactionFragment : Fragment() {
 
     private fun setObserverForLiveData() {
         // Create the observer which updates the UI.
-        val monthlyTransactionObserver = Observer<MonthlyTransactionList> { monthlyTransactionList ->
-            populateTransactionList(monthlyTransactionList)
-        }
+        val monthlyTransactionObserver =
+            Observer<MonthlyTransactionList> { monthlyTransactionList ->
+                populateTransactionList(monthlyTransactionList)
+            }
         monthlyTransactionViewModel.monthlyTransactionList.observe(this, monthlyTransactionObserver)
 
     }
@@ -53,25 +113,30 @@ class MonthlyTransactionFragment : Fragment() {
         clearTransactionTable()
         if (!this::transactionToTableRowPopulator.isInitialized)
             transactionToTableRowPopulator =
-                MonthlyTransactionToTableRowPopulator(context, transactionTable, monthlyTransactionList)
+                MonthlyTransactionToTableRowPopulator(
+                    context,
+                    transactionTable,
+                    monthlyTransactionList
+                )
 
         transactionToTableRowPopulator.monthlyTransactionList = monthlyTransactionList
         transactionToTableRowPopulator.populateDataToMonthlyTransactionTable()
     }
 
-    private fun createRoot(
+    private fun setRoot(
         inflater: LayoutInflater,
         container: ViewGroup?
-    ): View {
-        return inflater.inflate(R.layout.fragment_monthly_transaction, container, false)
+    ) {
+        root = inflater.inflate(R.layout.fragment_monthly_transaction, container, false)
     }
 
-    private fun setViews(root: View) {
+    private fun setViews() {
         transactionTable = root.findViewById(R.id.transactionTable)
+        createBtn = root.findViewById(R.id.createMonthlyTransactionBtn)
     }
 
     private fun clearTransactionTable() {
-        while (transactionTable.childCount > 1){
+        while (transactionTable.childCount > 1) {
             var rowToRemove = transactionTable.getChildAt(1)
             transactionTable.removeView(rowToRemove)
         }

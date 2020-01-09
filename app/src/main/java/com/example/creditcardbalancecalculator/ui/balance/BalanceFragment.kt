@@ -18,8 +18,9 @@ import com.example.creditcardbalancecalculator.data.Constant.Companion.DATE_ONLY
 import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
 import com.example.creditcardbalancecalculator.data.TransactionList
 import com.example.creditcardbalancecalculator.helper.DateHelper
+import com.example.creditcardbalancecalculator.helper.MonthlyTransactionHelper
 import com.example.creditcardbalancecalculator.processor.TransactionProcessor
-import com.example.creditcardbalancecalculator.task.GetMonthlyTransactionTasks
+import com.example.creditcardbalancecalculator.task.ExecuteMonthlyTransactionDBTask
 import kotlinx.android.synthetic.main.fragment_balance.*
 
 
@@ -31,10 +32,11 @@ class BalanceFragment : Fragment() {
     private lateinit var selectDateView: CalendarView
     private var currentFocusInput: TextInputEditText? = null
     private lateinit var calculateBtn: Button
-    private lateinit var transactionTable:TableLayout
-    private lateinit var transactionProcessor:TransactionProcessor
-    private lateinit var transactionToTableRowPopulator:TransactionToTableRowPopulator
+    private lateinit var transactionTable: TableLayout
+    private lateinit var transactionProcessor: TransactionProcessor
+    private lateinit var transactionToTableRowPopulator: TransactionToTableRowPopulator
     private lateinit var cursor: Cursor
+
     companion object {
         private val INPUT_FIELD_DATE_FORMATTER = DATE_ONLY_FORMATTER
     }
@@ -59,24 +61,31 @@ class BalanceFragment : Fragment() {
 
     private fun setObserverForLiveData() {
         // Create the observer which updates the UI.
-        val monthlyTransactionObserver = Observer<MonthlyTransactionList> { monthlyTransactionList ->
-            var transactionListFromMonthlyTransaction = transactionProcessor.transformMonthlyTransactionList(monthlyTransactionList.monthlyTransactions)
-            balanceViewModel.transactionList.value?.addMonthlyTransactions(transactionListFromMonthlyTransaction)
-            balanceViewModel.transactionHasMonthly.value = true
-        }
+        val monthlyTransactionObserver =
+            Observer<MonthlyTransactionList> { monthlyTransactionList ->
+                var transactionListFromMonthlyTransaction =
+                    transactionProcessor.transformMonthlyTransactionList(monthlyTransactionList.monthlyTransactions)
+                balanceViewModel.transactionList.value?.addMonthlyTransactions(
+                    transactionListFromMonthlyTransaction
+                )
+                balanceViewModel.transactionHasMonthly.value = true
+            }
         balanceViewModel.monthlyTransactions.observe(this, monthlyTransactionObserver)
 
         val transactionObserver = Observer<TransactionList> { transactionList ->
             if (balanceViewModel.transactionHasMonthly.value!!) {
                 populateTransactionList(transactionList)
             } else {
-                balanceViewModel.monthlyTransactions.value = GetMonthlyTransactionTasks(context!!.applicationContext).execute().get()
+                balanceViewModel.monthlyTransactions.value =
+                    ExecuteMonthlyTransactionDBTask<MonthlyTransactionList>(context!!.applicationContext).execute(
+                        MonthlyTransactionHelper.getAllTransaction
+                    ).get()
             }
         }
         balanceViewModel.transactionList.observe(this, transactionObserver)
 
         val transactionHasMonthlyObserver = Observer<Boolean> { transactionHasMonthly ->
-            if (transactionHasMonthly){
+            if (transactionHasMonthly) {
                 populateTransactionList(balanceViewModel.transactionList.value!!)
             }
         }
@@ -163,14 +172,18 @@ class BalanceFragment : Fragment() {
                 jumpToNextInput()
             } else {
                 calculateBtn.isEnabled = false
-                val toast = Toast.makeText(context, "From date must be before or equal to To date!", Toast.LENGTH_SHORT)
+                val toast = Toast.makeText(
+                    context,
+                    "From date must be before or equal to To date!",
+                    Toast.LENGTH_SHORT
+                )
                 toast.show()
             }
         }
     }
 
     private fun jumpToNextInput() {
-        if (currentFocusInput != null && currentFocusInput!!.equals(fromDateInputView)){
+        if (currentFocusInput != null && currentFocusInput!!.equals(fromDateInputView)) {
             toDateInputView.requestFocus()
         }
     }
@@ -209,7 +222,7 @@ class BalanceFragment : Fragment() {
 
     private val selectDateOnClickListener = { _: CalendarView, year: Int, month: Int, day: Int ->
         //month returned from event range is 0..11, while month in Local Date is 1..12, so need to plus 1
-        var selectedDate = LocalDate.of(year, month+1, day)
+        var selectedDate = LocalDate.of(year, month + 1, day)
         currentFocusInput!!.setText(selectedDate.format(INPUT_FIELD_DATE_FORMATTER))
     }
 
@@ -223,7 +236,7 @@ class BalanceFragment : Fragment() {
     }
 
     private fun clearTransactionTable() {
-        while (transactionTable.childCount > 1){
+        while (transactionTable.childCount > 1) {
             var rowToRemove = transactionTable.getChildAt(1)
             transactionTable.removeView(rowToRemove)
         }

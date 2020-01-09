@@ -18,6 +18,11 @@ class MonthlyTransactionToTableRowPopulator(
 ) {
 
 
+    private val onRowLongClickListener : (View) -> Boolean = { v:View ->
+
+        true
+    }
+
     companion object {
         private val TIME_ONLY_FORMATTER = DateTimeFormatter.ofPattern("hh:mm")
         private val MONTH_DATE_ONLY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd")
@@ -35,6 +40,7 @@ class MonthlyTransactionToTableRowPopulator(
             addTextViewToTableRow(row, monthlyTransaction.date.toString())
             addTextViewToTableRow(row, monthlyTransaction.description)
             addTextViewToTableRow(row, toVNDFormat(monthlyTransaction.amount))
+            row.setOnLongClickListener (View.OnLongClickListener (onRowLongClickListener))
             monthlyTransactionTable.addView(row)
         }
     }
