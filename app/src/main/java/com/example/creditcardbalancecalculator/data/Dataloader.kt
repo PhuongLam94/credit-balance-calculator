@@ -9,9 +9,9 @@ class Dataloader {
     companion object{
         fun initMonthlyTransaction(){
             val monthlyTransactionDAO = AppDatabase.getDatabase().monthlyTransactionDAO()
-            monthlyTransactionDAO.insert(MonthlyTransaction(UUID.randomUUID().toString(), 22,"Tra gop Tiki iPad", 557000))
-            monthlyTransactionDAO.insert(MonthlyTransaction(UUID.randomUUID().toString(), 22,"Tra gop Tiki Mi 9 SE", 583000))
-            monthlyTransactionDAO.insert(MonthlyTransaction(UUID.randomUUID().toString(), 22,"Tra gop Tiki Amazfit", 290000))
+            monthlyTransactionDAO.insert(MonthlyTransaction(22,"Tra gop Tiki iPad", 557000))
+            monthlyTransactionDAO.insert(MonthlyTransaction( 22,"Tra gop Tiki Mi 9 SE", 583000))
+            monthlyTransactionDAO.insert(MonthlyTransaction(22,"Tra gop Tiki Amazfit", 290000))
         }
     }
 }

@@ -1,9 +1,8 @@
 package com.example.creditcardbalancecalculator.ui.monthlytransaction
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.widget.AdapterView
 import android.widget.Button
 import android.widget.TableLayout
 import android.widget.Toast
@@ -65,6 +64,7 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
     private lateinit var transactionToTableRowPopulator: MonthlyTransactionToTableRowPopulator
     private lateinit var createBtn: Button
     private lateinit var root: View
+    private lateinit var selectedRow : View
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -79,6 +79,16 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
         return root
     }
 
+    override fun onCreateContextMenu(
+        menu: ContextMenu?,
+        v: View?,
+        menuInfo: ContextMenu.ContextMenuInfo?
+    ) {
+        super.onCreateContextMenu(menu, v, menuInfo)
+        selectedRow = v!!
+        val inflater : MenuInflater = activity!!.menuInflater
+        inflater.inflate(R.menu.monthly_transaction_menu, menu)
+    }
     private fun handleCreateBtn() {
         createBtn.setOnClickListener { _ ->
             var createDialog = CreateMonthlyTransactionDialog()
@@ -114,6 +124,7 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
         if (!this::transactionToTableRowPopulator.isInitialized)
             transactionToTableRowPopulator =
                 MonthlyTransactionToTableRowPopulator(
+                    this,
                     context,
                     transactionTable,
                     monthlyTransactionList
@@ -123,6 +134,21 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
         transactionToTableRowPopulator.populateDataToMonthlyTransactionTable()
     }
 
+    override fun onContextItemSelected(item: MenuItem?): Boolean {
+        return when (item!!.itemId) {
+            R.id.edit -> {
+                true
+            }
+            R.id.delete -> {
+                ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
+                    MonthlyTransactionHelper.deleteTransaction(selectedRow.tag.toString().toInt())
+                )
+                getMonthlyTransactions()
+                true
+            }
+            else -> super.onContextItemSelected(item)
+        }
+    }
     private fun setRoot(
         inflater: LayoutInflater,
         container: ViewGroup?

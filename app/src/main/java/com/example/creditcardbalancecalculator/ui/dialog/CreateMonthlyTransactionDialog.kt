@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ClipDescription
 import android.content.Context
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -27,18 +28,27 @@ class CreateMonthlyTransactionDialog : DialogFragment() {
             builder.setView(root)
                 // Add action buttons
                 .setPositiveButton(
-                    R.string.create
-                ) { dialog, _ ->
-                    var listener = targetFragment as NoticeDialogListener
-                    var description = root.findViewById<TextInputEditText>(R.id.description).text.toString()
-                    var amount = root.findViewById<TextInputEditText>(R.id.amount).text.toString()
-                    var date = root.findViewById<TextInputEditText>(R.id.date).text.toString()
-                    listener.onDialogPositiveClick(this, description, amount, date)
-                }
+                    R.string.create, null
+                )
                 .setNegativeButton(
                     R.string.cancel
                 ) { _, _ -> dialog.cancel() }
-            builder.create()
+            val dialog = builder.create()
+            dialog.setOnShowListener {
+                val positiveBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                positiveBtn.setOnClickListener()
+                    {
+                        val listener = targetFragment as NoticeDialogListener
+                        val description = root.findViewById<TextInputEditText>(R.id.description).text.toString()
+                        val amount = root.findViewById<TextInputEditText>(R.id.amount).text.toString()
+                        val date = root.findViewById<TextInputEditText>(R.id.date).text.toString()
+                        listener.onDialogPositiveClick(this, description, amount, date)
+                    }
+            }
+
+
+            dialog
         } ?: throw IllegalStateException("Activity cannot be null")
     }
+
 }

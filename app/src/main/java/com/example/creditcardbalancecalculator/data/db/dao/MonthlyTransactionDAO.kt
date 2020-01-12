@@ -13,4 +13,7 @@ interface MonthlyTransactionDAO {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(monthlyTransaction: MonthlyTransaction)
+
+    @Query("DELETE FROM monthlytransaction WHERE id = :id")
+    fun deleteById(id: Int)
 }

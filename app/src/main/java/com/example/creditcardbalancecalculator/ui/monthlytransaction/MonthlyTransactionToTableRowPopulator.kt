@@ -12,16 +12,11 @@ import java.time.format.DateTimeFormatter
 
 
 class MonthlyTransactionToTableRowPopulator(
+    val monthlyTransactionFragment: MonthlyTransactionFragment,
     val context: Context?,
     val monthlyTransactionTable: TableLayout,
     var monthlyTransactionList: MonthlyTransactionList
 ) {
-
-
-    private val onRowLongClickListener : (View) -> Boolean = { v:View ->
-
-        true
-    }
 
     companion object {
         private val TIME_ONLY_FORMATTER = DateTimeFormatter.ofPattern("hh:mm")
@@ -40,7 +35,8 @@ class MonthlyTransactionToTableRowPopulator(
             addTextViewToTableRow(row, monthlyTransaction.date.toString())
             addTextViewToTableRow(row, monthlyTransaction.description)
             addTextViewToTableRow(row, toVNDFormat(monthlyTransaction.amount))
-            row.setOnLongClickListener (View.OnLongClickListener (onRowLongClickListener))
+            row.tag = monthlyTransaction.id
+            monthlyTransactionFragment.registerForContextMenu(row)
             monthlyTransactionTable.addView(row)
         }
     }

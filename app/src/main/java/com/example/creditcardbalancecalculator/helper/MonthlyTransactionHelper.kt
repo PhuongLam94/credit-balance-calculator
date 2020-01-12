@@ -15,6 +15,13 @@ class MonthlyTransactionHelper {
                 dao.insert(it)
             }
         }
+
+        val deleteTransaction: (Int) -> ((MonthlyTransactionDAO) -> Unit) = {id ->
+            { dao: MonthlyTransactionDAO ->
+                dao.deleteById(id)
+            }
+
+        }
         fun validateMonthlyTransactionFields(description: String, amount: String, date: String):String{
             val descriptionMsg = validateDescriptionField(description)
             val amountMsg = validateAmountField(amount)
@@ -52,5 +59,6 @@ class MonthlyTransactionHelper {
             else
                 return "Description length cannot exceed 256!"
         }
+
     }
 }
