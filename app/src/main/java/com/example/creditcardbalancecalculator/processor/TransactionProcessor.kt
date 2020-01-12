@@ -174,8 +174,10 @@ class TransactionProcessor(val context: Context?, val fromDate: LocalDate, val t
         if (monthlyTransaction.date == null)
             throw Exception("Monthly transaction ${monthlyTransaction.description} date is null")
 
-        var transactionDate1 = LocalDate.of(fromDate.year, fromDate.month, monthlyTransaction.date)
-        var transactionDate2 = LocalDate.of(toDate.year, toDate.month, monthlyTransaction.date)
+        var transactionDate1 = if (monthlyTransaction.date > fromDate.lengthOfMonth()) LocalDate.of(fromDate.year, fromDate.month, fromDate.lengthOfMonth())
+            else LocalDate.of(fromDate.year, fromDate.month, monthlyTransaction.date)
+        var transactionDate2 = if (monthlyTransaction.date > toDate.lengthOfMonth())LocalDate.of(toDate.year, toDate.month, toDate.lengthOfMonth())
+            else LocalDate.of(toDate.year, toDate.month, monthlyTransaction.date)
         return if (DateHelper.dateIsBetween(transactionDate1, fromDate, toDate))
             DateHelper.getMiddleOfDate(transactionDate1)
         else if (DateHelper.dateIsBetween(transactionDate2, fromDate, toDate))
