@@ -4,15 +4,11 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import com.example.creditcardbalancecalculator.data.Transaction
-import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
 import com.example.creditcardbalancecalculator.data.TransactionList
 import com.example.creditcardbalancecalculator.data.db.entity.MonthlyTransaction
 import com.example.creditcardbalancecalculator.helper.CursorHelper
 import com.example.creditcardbalancecalculator.helper.DateHelper
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.*
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
 import kotlin.collections.ArrayList
@@ -158,29 +154,50 @@ class TransactionProcessor(val context: Context?, val fromDate: LocalDate, val t
     fun transformMonthlyTransactionList(monthlyTransactions: List<MonthlyTransaction>): List<Transaction> {
         var transactions: ArrayList<Transaction> = ArrayList()
         for (monthlyTransaction in monthlyTransactions) {
-            var transactionDate = getPossibleTransactionDate(monthlyTransaction)
-            if (transactionDate != null) {
-                transactions.add(transformMonthlyTransaction(monthlyTransaction, transactionDate))
+            val period = Period.between(fromDate, toDate)
+            var fromPeriod = fromDate
+            var toPeriod = fromDate
+            for (i in (0 until period.months)) {
+                toPeriod = fromPeriod.plusMonths(1)
+                val transaction = transformMonthlyTransaction(monthlyTransaction, fromPeriod, toPeriod)
+                if (transaction != null) transactions.add(transaction)
+                fromPeriod = toPeriod
             }
+            val transaction = transformMonthlyTransaction(monthlyTransaction, toPeriod, toDate)
+            if (transaction != null) transactions.add(transaction)
         }
         return transactions
     }
 
-    private fun transformMonthlyTransaction(monthlyTransaction: MonthlyTransaction, transactionDate: LocalDateTime): Transaction {
-        return Transaction(transactionDate, monthlyTransaction.description, monthlyTransaction.amount)
+    private fun transformMonthlyTransaction(
+        monthlyTransaction: MonthlyTransaction,
+        fromPeriod: LocalDate,
+        toPeriod: LocalDate
+    ):Transaction? {
+        var transactionDate = getPossibleTransactionDate(monthlyTransaction, fromPeriod, toPeriod)
+        if (transactionDate != null) {
+            return Transaction(transactionDate, monthlyTransaction.description, monthlyTransaction.amount)
+        }
+        return null
     }
 
-    private fun getPossibleTransactionDate(monthlyTransaction: MonthlyTransaction): LocalDateTime? {
+
+
+    private fun getPossibleTransactionDate(
+        monthlyTransaction: MonthlyTransaction,
+        fromPeriod: LocalDate,
+        toPeriod: LocalDate
+    ): LocalDateTime? {
         if (monthlyTransaction.date == null)
             throw Exception("Monthly transaction ${monthlyTransaction.description} date is null")
 
-        var transactionDate1 = if (monthlyTransaction.date > fromDate.lengthOfMonth()) LocalDate.of(fromDate.year, fromDate.month, fromDate.lengthOfMonth())
-            else LocalDate.of(fromDate.year, fromDate.month, monthlyTransaction.date)
-        var transactionDate2 = if (monthlyTransaction.date > toDate.lengthOfMonth())LocalDate.of(toDate.year, toDate.month, toDate.lengthOfMonth())
-            else LocalDate.of(toDate.year, toDate.month, monthlyTransaction.date)
-        return if (DateHelper.dateIsBetween(transactionDate1, fromDate, toDate))
+        var transactionDate1 = if (monthlyTransaction.date > fromPeriod.lengthOfMonth()) LocalDate.of(fromPeriod.year, fromPeriod.month, fromPeriod.lengthOfMonth())
+            else LocalDate.of(fromPeriod.year, fromPeriod.month, monthlyTransaction.date)
+        var transactionDate2 = if (monthlyTransaction.date > toPeriod.lengthOfMonth())LocalDate.of(toPeriod.year, toPeriod.month, toPeriod.lengthOfMonth())
+            else LocalDate.of(toPeriod.year, toPeriod.month, monthlyTransaction.date)
+        return if (DateHelper.dateIsBetween(transactionDate1, fromPeriod, toPeriod))
             DateHelper.getMiddleOfDate(transactionDate1)
-        else if (DateHelper.dateIsBetween(transactionDate2, fromDate, toDate))
+        else if (DateHelper.dateIsBetween(transactionDate2, fromPeriod, toPeriod))
             DateHelper.getMiddleOfDate(transactionDate2)
         else null
     }
