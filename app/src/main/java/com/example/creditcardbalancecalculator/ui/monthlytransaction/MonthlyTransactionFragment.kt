@@ -2,7 +2,6 @@ package com.example.creditcardbalancecalculator.ui.monthlytransaction
 
 import android.os.Bundle
 import android.view.*
-import android.widget.AdapterView
 import android.widget.Button
 import android.widget.TableLayout
 import android.widget.Toast
@@ -11,53 +10,83 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.example.creditcardbalancecalculator.R
+import com.example.creditcardbalancecalculator.data.Constant
 import com.example.creditcardbalancecalculator.data.MonthlyTransactionList
 import com.example.creditcardbalancecalculator.data.db.entity.MonthlyTransaction
 import com.example.creditcardbalancecalculator.helper.MonthlyTransactionHelper
 import com.example.creditcardbalancecalculator.helper.MonthlyTransactionHelper.Companion.validateMonthlyTransactionFields
 import com.example.creditcardbalancecalculator.task.ExecuteMonthlyTransactionDBTask
-import com.example.creditcardbalancecalculator.ui.dialog.CreateMonthlyTransactionDialog
+import com.example.creditcardbalancecalculator.ui.dialog.CreateEditMonthlyTransactionDialog
 
-class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.NoticeDialogListener {
+class MonthlyTransactionFragment : Fragment(), CreateEditMonthlyTransactionDialog.NoticeDialogListener {
     override fun onDialogPositiveClick(
         dialog: DialogFragment,
         description: String,
         amount: String,
         date: String
     ) {
-        val message = validateMonthlyTransactionFields(description, amount, date)
-        if (message.isEmpty()) {
-            createMonthlyTransaction(description, amount.toLong(), date.toInt())
-            val toast =
-                Toast.makeText(
-                    context,
-                    "Monthly transaction created successfully!",
-                    Toast.LENGTH_SHORT
-                )
-            toast.show()
-            dialog.dismiss()
-            getMonthlyTransactions()
-        } else {
-            val toast =
-                Toast.makeText(
-                    context,
-                    message,
-                    Toast.LENGTH_LONG
-                )
-            toast.show()
+        val createEditMonthlyTransactionDialog = dialog as CreateEditMonthlyTransactionDialog
+        var message = "Monthly transaction created successfully!"
+        if (createEditMonthlyTransactionDialog.mode == Constant.CREATE)
+            message = createMonthlyTransaction(description, amount, date)
+        else
+            message = editMonthlyTransactionDialog(description, amount, date)
+
+        val toast =
+            Toast.makeText(
+                context,
+                message,
+                Toast.LENGTH_SHORT
+            )
+        toast.show()
+        dialog.dismiss()
+        getMonthlyTransactions()
+    }
+
+    override fun onDialogSetViewModel(dialog: CreateEditMonthlyTransactionDialog) {
+        if (dialog.mode == Constant.EDIT) {
+            var selectedTransaction =
+                ExecuteMonthlyTransactionDBTask<MonthlyTransaction>(context!!.applicationContext).execute(
+                    MonthlyTransactionHelper.getTransaction(selectedRow.tag.toString().toInt())
+                ).get()
+            dialog.viewModel.description.value = selectedTransaction.description
+            dialog.viewModel.date.value = selectedTransaction.date
+            dialog.viewModel.amount.value = selectedTransaction.amount
         }
     }
 
+    private fun editMonthlyTransactionDialog(description: String, amount: String, date: String) : String {
+        val message = validateMonthlyTransactionFields(description, amount, date)
+        return if (message.isEmpty()) {
+            var monthlyTransaction = MonthlyTransaction(selectedRow.tag.toString().toInt(), date.toInt(), description, amount.toLong())
+            var updateMonthlyTransactionFun = MonthlyTransactionHelper.updateTransaction(monthlyTransaction)
+            ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
+                updateMonthlyTransactionFun
+            ).get()
+            "Monthly transaction updated successfully!"
+        } else {
+            message
+        }
+    }
 
     private fun createMonthlyTransaction(
-        description: String, amount: Long, date: Int
-    ) {
-        var monthlyTransaction = MonthlyTransaction(date, description, amount)
-        var addMonthlyTransactionFun = MonthlyTransactionHelper.saveTransaction(monthlyTransaction)
-        ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
-            addMonthlyTransactionFun
-        ).get()
+        description: String,
+        amount: String,
+        date: String
+    ) :String {
+        val message = validateMonthlyTransactionFields(description, amount, date)
+        return if (message.isEmpty()) {
+            var monthlyTransaction = MonthlyTransaction(date.toInt(), description, amount.toLong())
+            var addMonthlyTransactionFun = MonthlyTransactionHelper.saveTransaction(monthlyTransaction)
+            ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
+                addMonthlyTransactionFun
+            ).get()
+            "Monthly transaction created successfully!"
+        } else {
+            message
+        }
     }
+
 
     private lateinit var monthlyTransactionViewModel: MonthlyTransactionViewModel
     private lateinit var transactionTable: TableLayout
@@ -91,10 +120,11 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
     }
     private fun handleCreateBtn() {
         createBtn.setOnClickListener { _ ->
-            var createDialog = CreateMonthlyTransactionDialog()
+            var createDialog = CreateEditMonthlyTransactionDialog(Constant.CREATE)
             createDialog.setTargetFragment(this, 0)
             createDialog.show(fragmentManager, "createMonthlyTransactionDialog")
         }
+
     }
 
     private fun getMonthlyTransactions() {
@@ -137,18 +167,33 @@ class MonthlyTransactionFragment : Fragment(), CreateMonthlyTransactionDialog.No
     override fun onContextItemSelected(item: MenuItem?): Boolean {
         return when (item!!.itemId) {
             R.id.edit -> {
+                showEditMonthlyTransactionDialog()
+                getMonthlyTransactions()
                 true
             }
             R.id.delete -> {
-                ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
-                    MonthlyTransactionHelper.deleteTransaction(selectedRow.tag.toString().toInt())
-                )
+                deleteMonthlyTransaction()
                 getMonthlyTransactions()
                 true
             }
             else -> super.onContextItemSelected(item)
         }
     }
+
+    private fun deleteMonthlyTransaction() {
+        ExecuteMonthlyTransactionDBTask<Unit>(context!!.applicationContext).execute(
+            MonthlyTransactionHelper.deleteTransaction(selectedRow.tag.toString().toInt())
+        )
+    }
+
+    private fun showEditMonthlyTransactionDialog() {
+
+        var editDialog = CreateEditMonthlyTransactionDialog(Constant.EDIT)
+        editDialog.setTargetFragment(this, 0)
+        editDialog.show(fragmentManager, "editMonthlyTransactionDialog")
+
+    }
+
     private fun setRoot(
         inflater: LayoutInflater,
         container: ViewGroup?

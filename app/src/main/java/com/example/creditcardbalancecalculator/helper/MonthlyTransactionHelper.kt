@@ -60,5 +60,18 @@ class MonthlyTransactionHelper {
                 return "Description length cannot exceed 256!"
         }
 
+        val updateTransaction: (MonthlyTransaction) -> ((MonthlyTransactionDAO) -> Unit) = {
+            { dao:MonthlyTransactionDAO ->
+                dao.update(it)
+            }
+        }
+
+        val getTransaction : (Int) -> ((MonthlyTransactionDAO) -> MonthlyTransaction) = {id ->
+            { dao: MonthlyTransactionDAO ->
+                dao.selectById(id)
+            }
+
+        }
+
     }
 }

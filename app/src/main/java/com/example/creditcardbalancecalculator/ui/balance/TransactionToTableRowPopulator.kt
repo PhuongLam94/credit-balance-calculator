@@ -23,7 +23,7 @@ class TransactionToTableRowPopulator(
 
 
     companion object {
-        private val TIME_ONLY_FORMATTER = DateTimeFormatter.ofPattern("hh:mm")
+        private val TIME_ONLY_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
         private val MONTH_DAT_ONLY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd")
     }
 

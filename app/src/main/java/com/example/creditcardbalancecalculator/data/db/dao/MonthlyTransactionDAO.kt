@@ -16,4 +16,10 @@ interface MonthlyTransactionDAO {
 
     @Query("DELETE FROM monthlytransaction WHERE id = :id")
     fun deleteById(id: Int)
+
+    @Query("SELECT * FROM monthlytransaction WHERE id = :id")
+    fun selectById(id: Int) : MonthlyTransaction
+
+    @Update
+    fun update(monthlyTransaction: MonthlyTransaction)
 }
